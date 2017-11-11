@@ -1,70 +1,41 @@
 #include "Adafruit_TLC5947.h"
 #include <Wire.h>
 #include <SparkFunSX1509.h>
-
+#include <Room.h>
 
 #define NUM_TLC5974 1
+#define DATA        D5
+#define CLOCK       D6
+#define LATCH       D7
 
-#define data   D5
-#define clock   D6
-#define latch   D7
-
-Adafruit_TLC5947 tlc = Adafruit_TLC5947(NUM_TLC5974, clock, data, latch);
+Adafruit_TLC5947 ledExt = Adafruit_TLC5947(NUM_TLC5974, CLOCK, DATA, LATCH);
 
 // SX1509 I2C address (set by ADDR1 and ADDR0 (00 by default):
 const byte SX1509_ADDRESS = 0x3E;  // SX1509 I2C address
-SX1509 io; // Create an SX1509 object to be used throughout
+SX1509 ioExt; // Create an SX1509 object to be used throughout
 
-// Call io.pinMode(<pin>, <mode>) to set any SX1509 pin as
-// either an INPUT, OUTPUT, INPUT_PULLUP, or ANALOG_OUTPUT
-const int SX1509_BTN_PIN = 7;
-const int SX1509_LED_PIN = 15;
-
-bool light = true;
+Room wohn = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 1, 1, true);
+Room kueche = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 2, 2, true);
+Room kinder1 = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 3, 3, true);
+Room flur = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 4, 4, true);
+Room kinder2 = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 5, 5, true);
+Room dach1 = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 6, 6, true);
+Room dach2 = Room(&ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 7, 7, true);
+Room rooms[] = {wohn, kueche, kinder1, flur, kinder2, dach1, dach2};
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("TLC5974 test");
-
-  tlc.begin();
-  if (!io.begin(SX1509_ADDRESS)) {
+  ledExt.begin();
+  if (!ioExt.begin(SX1509_ADDRESS)) {
+    Serial.println("IO start failed");
     while (1) ;
   }
-
-  io.pinMode(SX1509_LED_PIN, OUTPUT);
-  io.pinMode(SX1509_BTN_PIN, INPUT_PULLUP);
-
-  // Blink the LED a few times before we start:
-  for (int i=0; i<5; i++)
-  {
-    // Use io.digitalWrite(<pin>, <LOW | HIGH>) to set an
-    // SX1509 pin either HIGH or LOW:
-    io.digitalWrite(SX1509_LED_PIN, HIGH);
-    delay(100);
-    io.digitalWrite(SX1509_LED_PIN, LOW);
-    delay(100);
-  }
-}
-
-
-void toggleLight(uint16_t i) {
-  light = !light;
-  if(light) {
-    tlc.setLED(i, random(0, 4095), random(0, 4095), random(0, 4095));
-    tlc.write();
-  } else {
-    tlc.setLED(i, 0, 0, 0);
-    tlc.write();
-  }
+  Serial.println("Dollhouse start");
 }
 
 void loop() {
-  // Use io.digitalRead() to check if an SX1509 input I/O is
-  // either LOW or HIGH.
-  if (io.digitalRead(SX1509_BTN_PIN) == LOW) {
-    // If the button is pressed toggle the LED:
-    toggleLight(0);
-    while (io.digitalRead(SX1509_BTN_PIN) == LOW)
-      ; // Wait for button to release
+  int i;
+  for (i = 0; i < sizeof(rooms); i = i + 1) {
+    rooms[i].loop();
   }
 }
