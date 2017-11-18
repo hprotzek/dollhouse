@@ -34,17 +34,17 @@ void setup() {
     Serial.println("IO shield start failed");
     while (1) ;
   }
-  ioExt.debounceTime(500);
+  ioExt.debounceTime(32);
   Serial.println("IO shield start successful");
 
   Serial.println("Start initializing rooms");
-  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 1, 1, true);
-  rooms[1].begin("küche", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 2, 2, true);
-  rooms[2].begin("kinder1", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 3, 3, true);
-  rooms[3].begin("flur", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 4, 4, true);
-  rooms[4].begin("kinder2", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 5, 5, true);
-  rooms[5].begin("dach1", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 6, 6, true);
-  rooms[6].begin("dach2", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 7, 7, true);
+  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 0, 0, true);
+  rooms[1].begin("küche", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 1, 1, true);
+  rooms[2].begin("kinder1", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 2, 2, true);
+  rooms[3].begin("flur", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 3, 3, true);
+  rooms[4].begin("kinder2", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 4, 4, true);
+  rooms[5].begin("dach1", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 5, 5, true);
+  rooms[6].begin("dach2", &ioExt, &ledExt, random(0, 4095), random(0, 4095), random(0, 4095), 6, 6, true);
   Serial.println("Rooms start initializing successful");
 }
 

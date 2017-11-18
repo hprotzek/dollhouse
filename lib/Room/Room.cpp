@@ -9,62 +9,71 @@ Room::Room(){
   _wheelCounter = 0;
 }
 
-void Room::begin(String name, SX1509 *ioExt, Adafruit_TLC5947 *ledExt, uint16_t ledRedValue, uint16_t ledGreenValue, uint16_t ledBlueValue, int buttonPin, int ledPin, bool state) {
+void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
+  int buttonPin, int ledPin, uint16_t red, uint16_t green, uint16_t blue, bool ledState) {
+
   _name = name;
 
-  _ioExt = ioExt;
-  _ledExt = ledExt;
+  _io = io;
+  _led = led;
 
-  _ledRedValue = ledRedValue;
-  _ledGreenValue = ledGreenValue;
-  _ledBlueValue = ledBlueValue;
+  _red = red;
+  _green = green;
+  _blue = blue;
 
   _buttonPin = buttonPin;
   _ledPin = ledPin;
-  _state = state;
+  _ledState = ledState;
 
-  _ioExt->pinMode(_buttonPin, INPUT_PULLUP);
-  _ioExt->debouncePin(_buttonPin);
-  _ledExt->setLED(_ledPin, _ledRedValue, _ledGreenValue, _ledBlueValue);
-  _ledExt->write();
+  _io->pinMode(_buttonPin, INPUT_PULLUP);
+  _io->debouncePin(_buttonPin);
+  _led->setLED(_ledPin, _red, _green, _blue);
+  _led->write();
 
   _println("successful initialized");
 }
 
 void Room::loop() {
-  if (_ioExt->digitalRead(_buttonPin) == LOW) {
+  _println("loop");
+  if (_io->digitalRead(_buttonPin) == LOW) {
     _println("button pressed");
+    _lastButtonPressed = millis();
     _toggleLight();
-    while (_ioExt->digitalRead(_buttonPin) == LOW) {
-      if(_wheelCounter<4096) {
-        _wheel((4096 + _wheelCounter) & 4095);
-        _ledExt->write();
-        _wheelCounter++;
-      } else {
-        _wheelCounter = 0;
-      }
+
+    while (_io->digitalRead(_buttonPin) == LOW) {
+      // if(millis() - 1000 > _lastButtonPressed) {
+      //   if(_wheelCounter<4096) {
+      //     _wheel((4096 + _wheelCounter) & 4095);
+      //     _led->write();
+      //     _wheelCounter++;
+      //   } else {
+      //     _wheelCounter = 0;
+      //   }
+      // }
+      ;
     }
   }
+  delay(500);
 }
 
 void Room::_toggleLight() {
-  _state = !_state;
-  if(_state) {
-    _ledOn();
+  _ledState = !_ledState;
+  if(_ledState) {
+    _on();
   } else {
-    _ledOff();
+    _off();
   }
 }
 
-void Room::_ledOn() {
-  _ledExt->setLED(_ledPin, _ledRedValue, _ledGreenValue, _ledBlueValue);
-  _ledExt->write();
+void Room::_on() {
+  _led->setLED(_ledPin, _red, _green, _blue);
+  _led->write();
   _println("light on");
 }
 
-void Room::_ledOff() {
-  _ledExt->setLED(_ledPin, 0, 0, 0);
-  _ledExt->write();
+void Room::_off() {
+  _led->setLED(_ledPin, 0, 0, 0);
+  _led->write();
   _println("light off");
 }
 
@@ -74,14 +83,21 @@ void Room::_println(String msg) {
   Serial.println(msg);
 }
 
+void Room::_setColor(uint16_t red, uint16_t green, uint16_t blue) {
+  _red = red;
+  _green = green;
+  _blue = blue;
+  _led->setLED(_ledPin, _red, _green, _blue);
+}
+
 void Room::_wheel(uint16_t wheelPos) {
   if(wheelPos < 1365) {
-    _ledExt->setLED(_ledPin, 3*wheelPos, 4095 - 3*wheelPos, 0);
+    _setColor(3*wheelPos, 4095 - 3*wheelPos, 0);
   } else if(wheelPos < 2731) {
     wheelPos -= 1365;
-    _ledExt->setLED(_ledPin, 4095 - 3*wheelPos, 0, 3*wheelPos);
+    _setColor(4095 - 3*wheelPos, 0, 3*wheelPos);
   } else {
     wheelPos -= 2731;
-    _ledExt->setLED(_ledPin, 0, 3*wheelPos, 4095 - 3*wheelPos);
+    _setColor(0, 3*wheelPos, 4095 - 3*wheelPos);
   }
 }

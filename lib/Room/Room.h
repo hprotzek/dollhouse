@@ -10,28 +10,29 @@ class Room {
   public:
     Room();
 
-    void begin(String name, SX1509 *ioExt, Adafruit_TLC5947 *ledExt,
-      uint16_t ledRedValue, uint16_t ledGreenValue, uint16_t ledBlueValue,
-      int buttonPin, int ledPin, bool state);
+    void begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
+      int buttonPin, int ledPin,
+      uint16_t red, uint16_t green, uint16_t blue, bool ledState);
 
     void loop();
 
   private:
     void _toggleLight();
-    void _setLed(int ledPin, uint16_t ledRedValue, uint16_t ledGreenValue, uint16_t ledBlueValue);
-    void _ledOn();
-    void _ledOff();
+    void _setColor(uint16_t red, uint16_t green, uint16_t blue);
+    void _on();
+    void _off();
     void _println(String msg);
     void _wheel(uint16_t wheelPos);
 
-    SX1509 *_ioExt;
-    Adafruit_TLC5947 *_ledExt;
+    SX1509 *_io;
+    Adafruit_TLC5947 *_led;
 
     String _name;
-    uint16_t _ledRedValue, _ledGreenValue, _ledBlueValue;
+    uint16_t _red, _green, _blue;
     uint32_t _wheelCounter;
+    unsigned long _lastButtonPressed=0;
     int _buttonPin, _ledPin;
-    bool _state;
+    bool _ledState;
 };
 
 #endif
