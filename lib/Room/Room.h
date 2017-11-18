@@ -17,8 +17,8 @@ class Room {
     void loop();
 
   private:
-    void _toggleLight();
     void _setColor(uint16_t red, uint16_t green, uint16_t blue);
+    void _toggle();
     void _on();
     void _off();
     void _println(String msg);

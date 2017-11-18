@@ -34,29 +34,26 @@ void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
 }
 
 void Room::loop() {
-  _println("loop");
   if (_io->digitalRead(_buttonPin) == LOW) {
     _println("button pressed");
     _lastButtonPressed = millis();
-    _toggleLight();
+    _toggle();
 
     while (_io->digitalRead(_buttonPin) == LOW) {
-      // if(millis() - 1000 > _lastButtonPressed) {
-      //   if(_wheelCounter<4096) {
-      //     _wheel((4096 + _wheelCounter) & 4095);
-      //     _led->write();
-      //     _wheelCounter++;
-      //   } else {
-      //     _wheelCounter = 0;
-      //   }
-      // }
-      ;
+      if(millis() - 1000 > _lastButtonPressed) {
+        if(_wheelCounter<4096) {
+          _wheel((4096 + _wheelCounter) & 4095);
+          _led->write();
+          _wheelCounter++;
+        } else {
+          _wheelCounter = 0;
+        }
+      }
     }
   }
-  delay(500);
 }
 
-void Room::_toggleLight() {
+void Room::_toggle() {
   _ledState = !_ledState;
   if(_ledState) {
     _on();
