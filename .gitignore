@@ -54,3 +54,6 @@ dkms.conf
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+
+.DS_Store
+*/.DS_Store

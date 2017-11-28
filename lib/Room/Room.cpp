@@ -27,20 +27,28 @@ void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
 
   _io->pinMode(_buttonPin, INPUT_PULLUP);
   _io->debouncePin(_buttonPin);
-  _led->setLED(_ledPin, _red, _green, _blue);
-  _led->write();
+
+  if (_ledState) {
+    _on();
+  } else {
+    _off();
+  }
 
   _println("successful initialized");
 }
 
 void Room::loop() {
-  if (_io->digitalRead(_buttonPin) == LOW) {
+  if (_io->digitalRead(_buttonPin) == LOW && !_triggered) {
     _println("button pressed");
     _lastButtonPressed = millis();
-    _toggle();
+    _triggered = true;
 
     while (_io->digitalRead(_buttonPin) == LOW) {
+      delay(10);
       if(millis() - 1000 > _lastButtonPressed) {
+        if (_isOff()) {
+          _on();
+        }
         if(_wheelCounter<4096) {
           _wheel((4096 + _wheelCounter) & 4095);
           _led->write();
@@ -50,25 +58,41 @@ void Room::loop() {
         }
       }
     }
+
+    if (_triggered) {
+      if (millis() - 1000 < _lastButtonPressed) {
+        _toggle();
+      }
+      _triggered = false;
+    }
   }
 }
 
 void Room::_toggle() {
-  _ledState = !_ledState;
-  if(_ledState) {
-    _on();
-  } else {
+  if(_isOn()) {
     _off();
+  } else {
+    _on();
   }
 }
 
+bool Room::_isOff() {
+  return !_ledState;
+}
+
+bool Room::_isOn() {
+  return _ledState;
+}
+
 void Room::_on() {
+  _ledState = true;
   _led->setLED(_ledPin, _red, _green, _blue);
   _led->write();
   _println("light on");
 }
 
 void Room::_off() {
+  _ledState = false;
   _led->setLED(_ledPin, 0, 0, 0);
   _led->write();
   _println("light off");

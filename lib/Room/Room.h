@@ -21,6 +21,8 @@ class Room {
     void _toggle();
     void _on();
     void _off();
+    bool _isOn();
+    bool _isOff();
     void _println(String msg);
     void _wheel(uint16_t wheelPos);
 
@@ -32,7 +34,7 @@ class Room {
     uint32_t _wheelCounter;
     unsigned long _lastButtonPressed=0;
     int _buttonPin, _ledPin;
-    bool _ledState;
+    bool _ledState, _triggered;
 };
 
 #endif
