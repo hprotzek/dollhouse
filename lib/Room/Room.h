@@ -11,8 +11,7 @@ class Room {
     Room();
 
     void begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
-      int buttonPin, int ledPin,
-      uint16_t red, uint16_t green, uint16_t blue, bool ledState);
+      int buttonPin, int ledPin);
 
     void loop();
 
@@ -25,6 +24,8 @@ class Room {
     bool _isOff();
     void _println(String msg);
     void _wheel(uint16_t wheelPos);
+    bool _loadConfig();
+    void _saveConfig();
 
     SX1509 *_io;
     Adafruit_TLC5947 *_led;

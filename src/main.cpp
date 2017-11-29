@@ -52,13 +52,13 @@ void setup() {
   //SPIFFS.format();
 
   Serial.println("Start initializing rooms");
-  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, 0, 0, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[1].begin("küche", &ioExt, &ledExt, 1, 1, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[2].begin("kinder1", &ioExt, &ledExt, 2, 2, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[3].begin("flur", &ioExt, &ledExt, 3, 3, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[4].begin("kinder2", &ioExt, &ledExt, 4, 4, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[5].begin("dach1", &ioExt, &ledExt, 5, 5, random(0, 4095), random(0, 4095), random(0, 4095), false);
-  rooms[6].begin("dach2", &ioExt, &ledExt, 6, 6, random(0, 4095), random(0, 4095), random(0, 4095), false);
+  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, 0, 0);
+  rooms[1].begin("kueche", &ioExt, &ledExt, 1, 1);
+  rooms[2].begin("kinder1", &ioExt, &ledExt, 2, 2);
+  rooms[3].begin("flur", &ioExt, &ledExt, 3, 3);
+  rooms[4].begin("kinder2", &ioExt, &ledExt, 4, 4);
+  rooms[5].begin("dach1", &ioExt, &ledExt, 5, 5);
+  rooms[6].begin("dach2", &ioExt, &ledExt, 6, 6);
   Serial.println("Rooms start initializing successful");
 
   // pinMode(RED_PIN, OUTPUT);
