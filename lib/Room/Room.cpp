@@ -25,25 +25,10 @@ void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
 
   _println("mounting FS...");
   if (SPIFFS.begin()) {
-    if (!_loadConfig()) {
-      _println("failed to load config");
-      _red = random(0, 4095);
-      _green = random(0, 4095);
-      _blue = random(0, 4095);
-      _ledState = true;
-      _wheelCounter = 0;
-    } else {
-      _println("config loaded");
-    }
+    loadConfig();
   } else {
     _println("failed to mount file system");
     return;
-  }
-
-  if (_ledState) {
-    _on();
-  } else {
-    _off();
   }
 
   _println("successful initialized");
@@ -59,7 +44,7 @@ void Room::loop() {
       delay(10);
       if(millis() - 1000 > _lastButtonPressed) {
         if (_isOff()) {
-          _on();
+          on();
         }
         if(_wheelCounter<4096) {
           _wheel((4096 + _wheelCounter) & 4095);
@@ -81,11 +66,30 @@ void Room::loop() {
   }
 }
 
+void Room::loadConfig() {
+  if (!_loadConfig()) {
+    _println("failed to load config");
+    _red = random(0, 4095);
+    _green = random(0, 4095);
+    _blue = random(0, 4095);
+    _ledState = false;
+    _wheelCounter = 0;
+  } else {
+    _println("config loaded");
+  }
+
+  if (_ledState) {
+    on();
+  } else {
+    off();
+  }
+}
+
 void Room::_toggle() {
   if(_isOn()) {
-    _off();
+    off();
   } else {
-    _on();
+    on();
   }
 }
 
@@ -97,14 +101,14 @@ bool Room::_isOn() {
   return _ledState;
 }
 
-void Room::_on() {
+void Room::on() {
   _ledState = true;
   _led->setLED(_ledPin, _red, _green, _blue);
   _led->write();
   _println("light on");
 }
 
-void Room::_off() {
+void Room::off() {
   _ledState = false;
   _led->setLED(_ledPin, 0, 0, 0);
   _led->write();
@@ -134,6 +138,23 @@ void Room::_wheel(uint16_t wheelPos) {
     wheelPos -= 2731;
     _setColor(0, 3*wheelPos, 4095 - 3*wheelPos);
   }
+}
+
+void Room::_saveConfig() {
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& json = jsonBuffer.createObject();
+  json["red"] = _red;
+  json["green"] = _green;
+  json["blue"] = _blue;
+  json["state"] = _ledState;
+  json["wheel"] = _wheelCounter;
+
+  File configFile = SPIFFS.open("/config_"+_name+".json", "w");
+  if (!configFile) {
+    _println("Failed to open config file for writing");
+  }
+
+  json.printTo(configFile);
 }
 
 bool Room::_loadConfig() {
@@ -170,23 +191,6 @@ bool Room::_loadConfig() {
   _blue = json["blue"];
   _ledState = json["state"];
   _wheelCounter = json["wheel"];
-
+  _println("fconfig loaded successfully");
   return true;
-}
-
-void Room::_saveConfig() {
-  StaticJsonBuffer<200> jsonBuffer;
-  JsonObject& json = jsonBuffer.createObject();
-  json["red"] = _red;
-  json["green"] = _green;
-  json["blue"] = _blue;
-  json["state"] = _ledState;
-  json["wheel"] = _wheelCounter;
-
-  File configFile = SPIFFS.open("/config_"+_name+".json", "w");
-  if (!configFile) {
-    _println("Failed to open config file for writing");
-  }
-
-  json.printTo(configFile);
 }

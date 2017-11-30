@@ -14,18 +14,19 @@ class Room {
       int buttonPin, int ledPin);
 
     void loop();
+    void loadConfig();
+    void on();
+    void off();
 
   private:
     void _setColor(uint16_t red, uint16_t green, uint16_t blue);
     void _toggle();
-    void _on();
-    void _off();
     bool _isOn();
     bool _isOff();
     void _println(String msg);
     void _wheel(uint16_t wheelPos);
-    bool _loadConfig();
     void _saveConfig();
+    bool _loadConfig();
 
     SX1509 *_io;
     Adafruit_TLC5947 *_led;

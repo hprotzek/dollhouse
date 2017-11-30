@@ -3,23 +3,44 @@
 #include <SparkFunSX1509.h>
 #include <Room.h>
 #include "FS.h"
+#include <FiniteStateMachine.h>
+#include <Wheel.h>
+#include <Button.h>
 
 #define NUM_TLC5974 1
 #define DATA        D5
 #define CLOCK       D6
 #define LATCH       D7
-// #define DATA        4
-// #define CLOCK       5
-// #define LATCH       6
 
+// led driver
 Adafruit_TLC5947 ledExt = Adafruit_TLC5947(NUM_TLC5974, CLOCK, DATA, LATCH);
 
-// // SX1509 I2C address (set by ADDR1 and ADDR0 (00 by default):
-const byte SX1509_ADDRESS = 0x3E;  // SX1509 I2C address
-SX1509 ioExt; // Create an SX1509 object to be used throughout
+// io shield
+const byte SX1509_ADDRESS = 0x3E;
+SX1509 ioExt;
 
+// rooms
 const int roomCount = 7;
 Room* rooms = new Room[roomCount];
+
+// wheelLoop
+Wheel wheel = Wheel(NUM_TLC5974, &ledExt);
+
+// fsm
+void enterRoomLoop();
+void roomLoop();
+void exitRoomLoop();
+void colorWipeLoop();
+void rainbowCycleLoop();
+void nextMode();
+void button();
+const byte NUMBER_OF_STATES = 3;
+State roomState = State(enterRoomLoop, roomLoop, exitRoomLoop);
+State colorWipeState = State(colorWipeLoop);
+State rainbowCycleState = State(rainbowCycleLoop);
+FSM fsm = FSM(roomState);
+byte buttonPresses = 0;
+Button modeButton = Button(D3, PULLUP);
 
 // const int GREEN_PIN = D3;
 // const int RED_PIN   = D4;
@@ -40,16 +61,10 @@ void setup() {
     // digitalWrite(RED_PIN, HIGH);
     while (1) ;
   }
-  ioExt.debounceTime(32);
+  ioExt.debounceTime(32); // Set debounce time to 32 ms.
   Serial.println("IO shield start successful");
 
-  // Serial.println("Mounting FS...");
-  //
-  // if (!SPIFFS.begin()) {
-  //   Serial.println("Failed to mount file system");
-  //   return;
-  // }
-  //SPIFFS.format();
+  attachInterrupt(digitalPinToInterrupt(D3), nextMode, FALLING);
 
   Serial.println("Start initializing rooms");
   rooms[0].begin("wohnzimmer", &ioExt, &ledExt, 0, 0);
@@ -59,6 +74,7 @@ void setup() {
   rooms[4].begin("kinder2", &ioExt, &ledExt, 4, 4);
   rooms[5].begin("dach1", &ioExt, &ledExt, 5, 5);
   rooms[6].begin("dach2", &ioExt, &ledExt, 6, 6);
+  //rooms[7].begin("reserve", &ioExt, &ledExt, 7, 7);
   Serial.println("Rooms start initializing successful");
 
   // pinMode(RED_PIN, OUTPUT);
@@ -68,9 +84,46 @@ void setup() {
 }
 
 void loop() {
-  // digitalWrite(GREEN_PIN, HIGH);
-  // digitalWrite(RED_PIN, LOW);
+  if (modeButton.uniquePress()){
+   nextMode();
+  }
+
+  fsm.update();
+}
+
+void nextMode() {
+  Serial.println("Next mode");
+  wheel.interrupt();
+  buttonPresses = ++buttonPresses % NUMBER_OF_STATES;
+  switch (buttonPresses) {
+    case 0: fsm.transitionTo(roomState); break;
+    case 1: fsm.transitionTo(colorWipeState); break;
+    case 2: fsm.transitionTo(rainbowCycleState); break;
+  }
+}
+
+void enterRoomLoop() {
   for(int n = 0; n < roomCount; n++) {
-     rooms[n].loop();
- }
+    rooms[n].loadConfig();
+  }
+}
+
+void roomLoop() {
+  for(int n = 0; n < roomCount; n++) {
+    rooms[n].loop();
+  }
+}
+
+void exitRoomLoop() {
+  for(int n = 0; n < roomCount; n++) {
+    rooms[n].off();
+  }
+}
+
+void colorWipeLoop() {
+  wheel.loopColorWipe();
+}
+
+void rainbowCycleLoop() {
+  wheel.loopRainbowCycle();
 }
