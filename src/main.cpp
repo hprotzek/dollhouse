@@ -41,6 +41,7 @@ State rainbowCycleState = State(rainbowCycleLoop);
 FSM fsm = FSM(roomState);
 byte buttonPresses = 0;
 Button modeButton = Button(D3, PULLUP);
+unsigned long lastModeChange = 0;
 
 // const int GREEN_PIN = D3;
 // const int RED_PIN   = D4;
@@ -92,13 +93,16 @@ void loop() {
 }
 
 void nextMode() {
-  Serial.println("Next mode");
-  wheel.interrupt();
-  buttonPresses = ++buttonPresses % NUMBER_OF_STATES;
-  switch (buttonPresses) {
-    case 0: fsm.transitionTo(roomState); break;
-    case 1: fsm.transitionTo(colorWipeState); break;
-    case 2: fsm.transitionTo(rainbowCycleState); break;
+  if(millis() - 500 > lastModeChange) {
+    lastModeChange = millis();
+    Serial.println("Next mode");
+    wheel.interrupt();
+    buttonPresses = ++buttonPresses % NUMBER_OF_STATES;
+    switch (buttonPresses) {
+      case 0: fsm.transitionTo(roomState); break;
+      case 1: fsm.transitionTo(colorWipeState); break;
+      case 2: fsm.transitionTo(rainbowCycleState); break;
+    }
   }
 }
 
