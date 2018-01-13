@@ -1,0 +1,2 @@
+config.h filter=git-crypt diff=git-crypt
+platformio.ini filter=git-crypt diff=git-crypt
