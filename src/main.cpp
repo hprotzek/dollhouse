@@ -183,7 +183,7 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      client.subscribe(dollhouse_command_topic);
+      client.subscribe(dollhouse_command_topic, 1);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
