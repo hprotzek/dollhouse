@@ -57,8 +57,15 @@ void setup_wifi();
 void setup_networking();
 void callback(char* topic, byte* payload, unsigned int length);
 void reconnect();
+void sendStates();
+void sendState(const char* state_topic, int room_index);
 WiFiClient espClient;
 PubSubClient client(espClient);
+
+//
+// Json
+//
+const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
 void setup() {
   Serial.begin(9600);
@@ -80,16 +87,24 @@ void setup() {
     Serial.println("IO shield start successful");
   }
 
+  //
+  // Setup SPIFFS
+  //
+  if (!SPIFFS.begin()) {
+    Serial.println("failed to mount file system");
+    while(1) ;
+  }
+
   attachInterrupt(digitalPinToInterrupt(D3), nextMode, FALLING);
 
   Serial.println("Start initializing rooms");
-  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, 0, 0);
-  rooms[1].begin("kueche", &ioExt, &ledExt, 1, 1);
-  rooms[2].begin("kinder1", &ioExt, &ledExt, 2, 2);
-  rooms[3].begin("flur", &ioExt, &ledExt, 3, 3);
-  rooms[4].begin("kinder2", &ioExt, &ledExt, 4, 4);
-  rooms[5].begin("dach1", &ioExt, &ledExt, 5, 5);
-  rooms[6].begin("dach2", &ioExt, &ledExt, 6, 6);
+  rooms[0].begin("wohnzimmer", &ioExt, &ledExt, &client, 0, 0);
+  rooms[1].begin("kueche", &ioExt, &ledExt, &client, 1, 1);
+  rooms[2].begin("kinder1", &ioExt, &ledExt, &client, 2, 2);
+  rooms[3].begin("flur", &ioExt, &ledExt, &client, 3, 3);
+  rooms[4].begin("kinder2", &ioExt, &ledExt, &client, 4, 4);
+  rooms[5].begin("dach1", &ioExt, &ledExt, &client, 5, 5);
+  rooms[6].begin("dach2", &ioExt, &ledExt, &client, 6, 6);
   //rooms[7].begin("reserve", &ioExt, &ledExt, 7, 7);
   Serial.println("Rooms start initializing successful");
 
@@ -166,10 +181,8 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      // client.subscribe(light_command_topic);
-      // not required or?
-      // setColor(0, 0, 0);
-      // sendState();
+      client.subscribe(dollhouse_command_topic);
+      sendStates();
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -181,19 +194,58 @@ void reconnect() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
 
+  char message[length + 1];
+  for (int i = 0; i < length; i++) {
+    message[i] = (char)payload[i];
+  }
+  message[length] = '\0';
+  Serial.println(message);
+
+  if (topic == "home/dollhouse/wohnzimmer/command") {
+
+  } else if (topic == "home/dollhouse/kueche/command") {
+
+  }
+}
+
+void sendStates() {
+  
+}
+
+void sendState(const char* state_topic, int room_index) {
+  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+
+  JsonObject& root = jsonBuffer.createObject();
+
+  root["state"] = (rooms[room_index].getState()) ? "ON" : "OFF";
+  JsonObject& color = root.createNestedObject("color");
+  struct rgb room_color;
+  room_color = rooms[room_index].getColor();
+  color["r"] = room_color.red;
+  color["g"] = room_color.green;
+  color["b"] = room_color.blue;
+
+  char buffer[root.measureLength() + 1];
+  root.printTo(buffer, sizeof(buffer));
+
+  client.publish(state_topic, buffer, false);
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
 
   if (WiFi.status() != WL_CONNECTED) {
     delay(1);
     Serial.print("WIFI Disconnected. Attempting reconnection.");
     setup_wifi();
     return;
+  }
+
+  if (!client.connected()) {
+    reconnect();
   }
 
   client.loop();

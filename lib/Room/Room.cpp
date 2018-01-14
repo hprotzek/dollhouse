@@ -6,16 +6,19 @@
 #include <ArduinoJson.h>
 #include "FS.h"
 
+const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
+
 Room::Room(){
 }
 
-void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
+void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led, PubSubClient *mqtt,
   int buttonPin, int ledPin) {
 
   _name = name;
 
   _io = io;
   _led = led;
+  _mqtt = mqtt;
 
   _buttonPin = buttonPin;
   _ledPin = ledPin;
@@ -24,12 +27,8 @@ void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led,
   _io->debouncePin(_buttonPin);
 
   _println("mounting FS...");
-  if (SPIFFS.begin()) {
-    loadConfig();
-  } else {
-    _println("failed to mount file system");
-    return;
-  }
+  loadConfig();
+  _sendState();
 
   _println("successful initialized");
 }
@@ -61,6 +60,7 @@ void Room::loop() {
         _toggle();
       }
       _saveConfig();
+      _sendState();
       _triggered = false;
     }
   }
@@ -115,28 +115,59 @@ void Room::off() {
   _println("light off");
 }
 
+bool Room::getState() {
+  return _ledState;
+}
+
+void Room::_sendState() {
+  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+
+  root["state"] = (_ledState) ? "ON" : "OFF";
+  JsonObject& color = root.createNestedObject("color");
+  color["r"] = _red;
+  color["g"] = _green;
+  color["b"] = _blue;
+
+  char buffer[root.measureLength() + 1];
+  root.printTo(buffer, sizeof(buffer));
+
+  String stateStr = "home/dollhouse/"+_name+"/state";
+  char topicChar[stateStr.length() + 1];
+  stateStr.toCharArray(topicChar, stateStr.length()) ;;
+  _mqtt->publish(topicChar, buffer, true);
+}
+
 void Room::_println(String msg) {
   Serial.print(_name);
   Serial.print(" ");
   Serial.println(msg);
 }
 
-void Room::_setColor(uint16_t red, uint16_t green, uint16_t blue) {
+void Room::setColor(uint16_t red, uint16_t green, uint16_t blue) {
   _red = red;
   _green = green;
   _blue = blue;
   _led->setLED(_ledPin, _red, _green, _blue);
 }
 
+struct rgb Room::getColor() {
+  struct rgb color;
+  color.red = _red;
+  color.green = _green;
+  color.blue = _blue;
+  return color;
+}
+
 void Room::_wheel(uint16_t wheelPos) {
   if(wheelPos < 1365) {
-    _setColor(3*wheelPos, 4095 - 3*wheelPos, 0);
+    setColor(3*wheelPos, 4095 - 3*wheelPos, 0);
   } else if(wheelPos < 2731) {
     wheelPos -= 1365;
-    _setColor(4095 - 3*wheelPos, 0, 3*wheelPos);
+    setColor(4095 - 3*wheelPos, 0, 3*wheelPos);
   } else {
     wheelPos -= 2731;
-    _setColor(0, 3*wheelPos, 4095 - 3*wheelPos);
+    setColor(0, 3*wheelPos, 4095 - 3*wheelPos);
   }
 }
 
@@ -155,6 +186,7 @@ void Room::_saveConfig() {
   }
 
   json.printTo(configFile);
+  configFile.close();
 }
 
 bool Room::_loadConfig() {
@@ -177,6 +209,7 @@ bool Room::_loadConfig() {
   // buffer to be mutable. If you don't use ArduinoJson, you may as well
   // use configFile.readString instead.
   configFile.readBytes(buf.get(), size);
+  configFile.close();
 
   StaticJsonBuffer<200> jsonBuffer;
   JsonObject& json = jsonBuffer.parseObject(buf.get());
