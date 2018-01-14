@@ -11,10 +11,10 @@ const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 Room::Room(){
 }
 
-void Room::begin(String name, SX1509 *io, Adafruit_TLC5947 *led, PubSubClient *mqtt,
+void Room::begin(const char *nameArg, SX1509 *io, Adafruit_TLC5947 *led, PubSubClient *mqtt,
   int buttonPin, int ledPin) {
 
-  _name = name;
+  name = nameArg;
 
   _io = io;
   _led = led;
@@ -125,21 +125,68 @@ void Room::_sendState() {
 
   root["state"] = (_ledState) ? "ON" : "OFF";
   JsonObject& color = root.createNestedObject("color");
-  color["r"] = _red;
-  color["g"] = _green;
-  color["b"] = _blue;
+  color["r"] = map(_red, 0, 4096, 0, 255);
+  color["g"] = map(_green, 0, 4096, 0, 255);
+  color["b"] = map(_blue, 0, 4096, 0, 255);
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
 
-  String stateStr = "home/dollhouse/"+_name+"/state";
-  char topicChar[stateStr.length() + 1];
-  stateStr.toCharArray(topicChar, stateStr.length()) ;;
-  _mqtt->publish(topicChar, buffer, true);
+  char targetStr[50] = {0};
+  strcat(targetStr, "home/dollhouse/");
+  strcat(targetStr, name);
+  strcat(targetStr, "/state");
+  _println(targetStr);
+  _mqtt->publish(targetStr, buffer, true);
+}
+
+void Room::mqttCallback(byte* payload, unsigned int length) {
+  char message[length + 1];
+  for (int i = 0; i < length; i++) {
+    message[i] = (char)payload[i];
+  }
+  message[length] = '\0';
+  Serial.println(message);
+
+  if (!_processJson(message)) {
+    return;
+  }
+
+  _sendState();
+}
+
+/********************************** START PROCESS JSON*****************************************/
+bool Room::_processJson(char* message) {
+  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+
+  JsonObject& root = jsonBuffer.parseObject(message);
+
+  if (!root.success()) {
+    Serial.println("parseObject() failed");
+    return false;
+  }
+
+  if (root.containsKey("state")) {
+    if (strcmp(root["state"], "ON") == 0) {
+      on();
+    } else if (strcmp(root["state"], "OFF") == 0) {
+      off();
+    }
+  }
+
+  if (root.containsKey("color")) {
+    setColor(
+      map(root["color"]["r"], 0, 255, 0, 4096),
+      map(root["color"]["g"], 0, 255, 0, 4096),
+      map(root["color"]["b"], 0, 255, 0, 4096));
+  }
+  map(_red, 0, 4096, 0, 255);
+
+  return true;
 }
 
 void Room::_println(String msg) {
-  Serial.print(_name);
+  Serial.print(String(name));
   Serial.print(" ");
   Serial.println(msg);
 }
@@ -180,7 +227,7 @@ void Room::_saveConfig() {
   json["state"] = _ledState;
   json["wheel"] = _wheelCounter;
 
-  File configFile = SPIFFS.open("/config_"+_name+".json", "w");
+  File configFile = SPIFFS.open("/config_"+String(name)+".json", "w");
   if (!configFile) {
     _println("Failed to open config file for writing");
   }
@@ -190,7 +237,7 @@ void Room::_saveConfig() {
 }
 
 bool Room::_loadConfig() {
-  File configFile = SPIFFS.open("/config_"+_name+".json", "r");
+  File configFile = SPIFFS.open("/config_"+String(name)+".json", "r");
   if (!configFile) {
     _println("failed to open config file");
     return false;

@@ -17,7 +17,7 @@ class Room {
   public:
     Room();
 
-    void begin(String name, SX1509 *io, Adafruit_TLC5947 *led, PubSubClient *mqtt,
+    void begin(const char *name, SX1509 *io, Adafruit_TLC5947 *led, PubSubClient *mqtt,
       int buttonPin, int ledPin);
 
     void loop();
@@ -27,6 +27,9 @@ class Room {
     bool getState();
     struct rgb getColor();
     void setColor(uint16_t red, uint16_t green, uint16_t blue);
+    void mqttCallback(byte* payload, unsigned int length);
+
+    const char *name;
 
   private:
     void _toggle();
@@ -37,12 +40,12 @@ class Room {
     void _saveConfig();
     bool _loadConfig();
     void _sendState();
+    bool _processJson(char* message);
 
     SX1509 *_io;
     Adafruit_TLC5947 *_led;
     PubSubClient *_mqtt;
 
-    String _name;
     uint16_t _red, _green, _blue;
     uint32_t _wheelCounter;
     unsigned long _lastButtonPressed=0;

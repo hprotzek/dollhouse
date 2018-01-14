@@ -55,10 +55,8 @@ unsigned long lastModeChange = 0;
 
 void setup_wifi();
 void setup_networking();
-void callback(char* topic, byte* payload, unsigned int length);
+void mqttCallback(char* topic, byte* payload, unsigned int length);
 void reconnect();
-void sendStates();
-void sendState(const char* state_topic, int room_index);
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -68,7 +66,7 @@ PubSubClient client(espClient);
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   Serial.println("Start dollhouse");
 
@@ -81,21 +79,21 @@ void setup() {
     Serial.println("IO shield start failed");
     // digitalWrite(GREEN_PIN, LOW);
     // digitalWrite(RED_PIN, HIGH);
-    // while (1) ;
-  } else {
-    ioExt.debounceTime(32); // Set debounce time to 32 ms.
-    Serial.println("IO shield start successful");
+    while (1) ;
   }
+  ioExt.debounceTime(32); // Set debounce time to 32 ms.
+  Serial.println("IO shield start successful");
 
   //
   // Setup SPIFFS
   //
   if (!SPIFFS.begin()) {
     Serial.println("failed to mount file system");
+    SPIFFS.format();
     while(1) ;
   }
 
-  attachInterrupt(digitalPinToInterrupt(D3), nextMode, FALLING);
+  setup_networking();
 
   Serial.println("Start initializing rooms");
   rooms[0].begin("wohnzimmer", &ioExt, &ledExt, &client, 0, 0);
@@ -108,8 +106,8 @@ void setup() {
   //rooms[7].begin("reserve", &ioExt, &ledExt, 7, 7);
   Serial.println("Rooms start initializing successful");
 
+  attachInterrupt(digitalPinToInterrupt(D3), nextMode, FALLING);
 
-  setup_networking();
   // pinMode(RED_PIN, OUTPUT);
   // pinMode(GREEN_PIN, OUTPUT);
   // digitalWrite(GREEN_PIN, LOW);
@@ -119,7 +117,7 @@ void setup() {
 void setup_networking() {
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
+  client.setCallback(mqttCallback);
 
   //OTA SETUP
   ArduinoOTA.setPort(OTAport);
@@ -151,6 +149,10 @@ void setup_networking() {
   Serial.println("Ready");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+
+  if (!client.connected()) {
+    reconnect();
+  }
 }
 
 void setup_wifi() {
@@ -182,7 +184,6 @@ void reconnect() {
     if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
       Serial.println("connected");
       client.subscribe(dollhouse_command_topic);
-      sendStates();
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -193,46 +194,16 @@ void reconnect() {
   }
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
 
-  char message[length + 1];
-  for (int i = 0; i < length; i++) {
-    message[i] = (char)payload[i];
+  for(int n = 0; n < roomCount; n++) {
+    if (strstr (topic, rooms[n].name)) {
+      rooms[n].mqttCallback(payload, length);
+    }
   }
-  message[length] = '\0';
-  Serial.println(message);
-
-  if (topic == "home/dollhouse/wohnzimmer/command") {
-
-  } else if (topic == "home/dollhouse/kueche/command") {
-
-  }
-}
-
-void sendStates() {
-  
-}
-
-void sendState(const char* state_topic, int room_index) {
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-
-  JsonObject& root = jsonBuffer.createObject();
-
-  root["state"] = (rooms[room_index].getState()) ? "ON" : "OFF";
-  JsonObject& color = root.createNestedObject("color");
-  struct rgb room_color;
-  room_color = rooms[room_index].getColor();
-  color["r"] = room_color.red;
-  color["g"] = room_color.green;
-  color["b"] = room_color.blue;
-
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
-
-  client.publish(state_topic, buffer, false);
 }
 
 void loop() {
