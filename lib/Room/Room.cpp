@@ -180,34 +180,8 @@ bool Room::_processJson(char* message) {
       map(root["color"]["g"], 0, 255, 0, 4096),
       map(root["color"]["b"], 0, 255, 0, 4096));
   }
-  map(_red, 0, 4096, 0, 255);
 
   return true;
-}
-
-void Room::_discovery() {
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-  JsonObject& root = jsonBuffer.createObject();
-
-  root["name"] = name;
-  root["device_class"] = "light";
-  root["platform"] = "mqtt_json";
-  root["state_topic"] = "home/dollhouse/"+String(name);
-  root["command_topic"] = "home/dollhouse/"+String(name)+"/state";
-  root["rgb"] = true;
-  root["optimistic"] = false;
-  root["qos"] = 1;
-  root["retain"] = false;
-
-  char buffer[root.measureLength() + 1];
-  root.printTo(buffer, sizeof(buffer));
-
-  char targetStr[50] = {0};
-  strcat(targetStr, "homeassistant/light/");
-  strcat(targetStr, name);
-  strcat(targetStr, "/config");
-  _println(targetStr);
-  _mqtt->publish(targetStr, buffer, false);
 }
 
 void Room::_println(String msg) {

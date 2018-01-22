@@ -41,7 +41,6 @@ class Room {
     bool _loadConfig();
     void _sendState();
     bool _processJson(char* message);
-    void _discovery();
 
     SX1509 *_io;
     Adafruit_TLC5947 *_led;

@@ -15,20 +15,23 @@
 #include "config.h"
 
 #define NUM_TLC5974 1
-#define DATA        D5
-#define CLOCK       D6
-#define LATCH       D7
+#define DATA D5
+#define CLOCK D6
+#define LATCH D7
+#define TEMP_SENSOR_PIN A0
+#define ERROR_LED_PIN D4
+#define SUCCESS_LED_PIN D8
 
-// led driver
+/* LED Shield */
 Adafruit_TLC5947 ledExt = Adafruit_TLC5947(NUM_TLC5974, CLOCK, DATA, LATCH);
 
-// io shield
+/* IO Shield */
 const byte SX1509_ADDRESS = 0x3E;
 SX1509 ioExt;
 
-// rooms
+/* Dollhouse Rooms */
 const int roomCount = 7;
-Room* rooms = new Room[roomCount];
+Room *rooms = new Room[roomCount];
 
 // wheelLoop
 Wheel wheel = Wheel(NUM_TLC5974, &ledExt);
@@ -50,13 +53,11 @@ byte buttonPresses = 0;
 Button modeButton = Button(D3, PULLUP);
 unsigned long lastModeChange = 0;
 
-// const int GREEN_PIN = D3;
-// const int RED_PIN   = D4;
-
 void setup_wifi();
 void setup_networking();
-void mqttCallback(char* topic, byte* payload, unsigned int length);
+void mqttCallback(char *topic, byte *payload, unsigned int length);
 void reconnect();
+bool processJson(char *message);
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -65,33 +66,54 @@ PubSubClient client(espClient);
 //
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
-void setup() {
+/* Temperature Sensor */
+void tempLoop();
+long previousMillis = 0;
+float previousTemp = 0;
+long interval = 60000;
+
+void setup()
+{
   Serial.begin(115200);
+
+  pinMode(SUCCESS_LED_PIN, OUTPUT);
+  pinMode(ERROR_LED_PIN, OUTPUT);
+  digitalWrite(SUCCESS_LED_PIN, LOW);
+  digitalWrite(ERROR_LED_PIN, LOW);
 
   Serial.println("Start dollhouse");
 
   Serial.println("Start led driver");
   ledExt.begin();
+  delay(500);
   Serial.println("Led driver start successful");
 
   Serial.println("Start io shield");
-  if (!ioExt.begin(SX1509_ADDRESS)) {
+  if (!ioExt.begin(SX1509_ADDRESS))
+  {
     Serial.println("IO shield start failed");
-    // digitalWrite(GREEN_PIN, LOW);
-    // digitalWrite(RED_PIN, HIGH);
-    while (1) ;
+    digitalWrite(SUCCESS_LED_PIN, LOW);
+    digitalWrite(ERROR_LED_PIN, HIGH);
+    while (1)
+      ;
   }
+  delay(500);
   ioExt.debounceTime(32); // Set debounce time to 32 ms.
   Serial.println("IO shield start successful");
 
   //
   // Setup SPIFFS
   //
-  if (!SPIFFS.begin()) {
+  if (!SPIFFS.begin())
+  {
     Serial.println("failed to mount file system");
     SPIFFS.format();
-    while(1) ;
+    digitalWrite(SUCCESS_LED_PIN, LOW);
+    digitalWrite(ERROR_LED_PIN, HIGH);
+    while (1)
+      ;
   }
+  delay(500);
 
   setup_networking();
 
@@ -108,13 +130,12 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(D3), nextMode, FALLING);
 
-  // pinMode(RED_PIN, OUTPUT);
-  // pinMode(GREEN_PIN, OUTPUT);
-  // digitalWrite(GREEN_PIN, LOW);
-  // digitalWrite(RED_PIN, LOW);
+  digitalWrite(SUCCESS_LED_PIN, HIGH);
+  digitalWrite(ERROR_LED_PIN, LOW);
 }
 
-void setup_networking() {
+void setup_networking()
+{
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqttCallback);
@@ -138,11 +159,16 @@ void setup_networking() {
   });
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    if (error == OTA_AUTH_ERROR)
+      Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR)
+      Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR)
+      Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR)
+      Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR)
+      Serial.println("End Failed");
   });
   ArduinoOTA.begin();
 
@@ -150,13 +176,15 @@ void setup_networking() {
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     reconnect();
   }
 }
 
-void setup_wifi() {
-  delay(10);
+void setup_wifi()
+{
+  delay(500);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
@@ -165,7 +193,8 @@ void setup_wifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -176,15 +205,20 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
-void reconnect() {
+void reconnect()
+{
   // Loop until we're reconnected
-  while (!client.connected()) {
+  while (!client.connected())
+  {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
+    if (client.connect(SENSORNAME, mqtt_username, mqtt_password))
+    {
       Serial.println("connected");
       client.subscribe(dollhouse_command_topic, 1);
-    } else {
+    }
+    else
+    {
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -194,28 +228,81 @@ void reconnect() {
   }
 }
 
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
+void mqttCallback(char *topic, byte *payload, unsigned int length)
+{
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
 
-  for(int n = 0; n < roomCount; n++) {
-    if (strstr (topic, rooms[n].name)) {
+  char message[length + 1];
+  for (int i = 0; i < length; i++)
+  {
+    message[i] = (char)payload[i];
+  }
+  message[length] = '\0';
+  Serial.println(message);
+
+  if (!processJson(message))
+  {
+    return;
+  }
+
+  for (int n = 0; n < roomCount; n++)
+  {
+    if (strstr(topic, rooms[n].name))
+    {
       rooms[n].mqttCallback(payload, length);
+      break;
     }
   }
 }
 
-void loop() {
+bool processJson(char *message)
+{
+  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+  JsonObject &root = jsonBuffer.parseObject(message);
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (!root.success())
+  {
+    Serial.println("parseObject() failed");
+    return false;
+  }
+
+  if (root.containsKey("effect"))
+  {
+    if (root["effect"] == "Color Wipe")
+    {
+      buttonPresses = 1;
+      fsm.transitionTo(colorWipeState);
+    }
+    else if (root["effect"] == "Rainbow Cycle")
+    {
+      buttonPresses = 2;
+      fsm.transitionTo(rainbowCycleState);
+    }
+    else
+    {
+      buttonPresses = 0;
+      fsm.transitionTo(roomState);
+    }
+  }
+
+  return true;
+}
+
+void loop()
+{
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
     delay(1);
     Serial.print("WIFI Disconnected. Attempting reconnection.");
     setup_wifi();
     return;
   }
 
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     reconnect();
   }
 
@@ -223,49 +310,93 @@ void loop() {
 
   ArduinoOTA.handle();
 
-  if (modeButton.uniquePress()){
-   nextMode();
+  tempLoop();
+
+  if (modeButton.uniquePress())
+  {
+    nextMode();
   }
 
   fsm.update();
 }
 
-void nextMode() {
-  if(millis() - 500 > lastModeChange) {
+void nextMode()
+{
+  if (millis() - 500 > lastModeChange)
+  {
     lastModeChange = millis();
     Serial.println("Next mode");
     wheel.interrupt();
     buttonPresses = ++buttonPresses % NUMBER_OF_STATES;
-    switch (buttonPresses) {
-      case 0: fsm.transitionTo(roomState); break;
-      case 1: fsm.transitionTo(colorWipeState); break;
-      case 2: fsm.transitionTo(rainbowCycleState); break;
+    switch (buttonPresses)
+    {
+    case 0:
+      fsm.transitionTo(roomState);
+      break;
+    case 1:
+      fsm.transitionTo(colorWipeState);
+      break;
+    case 2:
+      fsm.transitionTo(rainbowCycleState);
+      break;
     }
   }
 }
 
-void enterRoomLoop() {
-  for(int n = 0; n < roomCount; n++) {
+void enterRoomLoop()
+{
+  for (int n = 0; n < roomCount; n++)
+  {
     rooms[n].loadConfig();
   }
 }
 
-void roomLoop() {
-  for(int n = 0; n < roomCount; n++) {
+void roomLoop()
+{
+  for (int n = 0; n < roomCount; n++)
+  {
     rooms[n].loop();
   }
 }
 
-void exitRoomLoop() {
-  for(int n = 0; n < roomCount; n++) {
+void exitRoomLoop()
+{
+  for (int n = 0; n < roomCount; n++)
+  {
     rooms[n].off();
   }
 }
 
-void colorWipeLoop() {
+void colorWipeLoop()
+{
   wheel.loopColorWipe();
 }
 
-void rainbowCycleLoop() {
+void rainbowCycleLoop()
+{
   wheel.loopRainbowCycle();
+}
+
+/* Temperature Sensor */
+void tempLoop()
+{
+  unsigned long currentMillis = millis();
+  if(currentMillis - previousMillis > interval) {
+    previousMillis = currentMillis;   
+ 
+    int reading = analogRead(TEMP_SENSOR_PIN);
+    float voltage = reading * 3.3;
+    voltage /= 1024.0;
+    float currentTemp = (voltage - 0.5) * 100; 
+    Serial.print(currentTemp);
+    Serial.println(" degrees C");
+    
+    if(currentTemp != previousTemp) {
+      previousTemp = currentTemp;
+      char tempStr[10];
+      dtostrf(currentTemp, 6, 1, tempStr);
+      Serial.println("Send temp over mqtt");
+      client.publish(dollhouse_temp_topic, tempStr);
+    }
+  }
 }
