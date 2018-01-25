@@ -40,7 +40,7 @@ void Room::loop() {
     _triggered = true;
 
     while (_io->digitalRead(_buttonPin) == LOW) {
-      delay(10);
+      delay(5);
       if(millis() - 1000 > _lastButtonPressed) {
         if (_isOff()) {
           on();
@@ -194,6 +194,12 @@ void Room::setColor(uint16_t red, uint16_t green, uint16_t blue) {
   _red = red;
   _green = green;
   _blue = blue;
+  _led->setLED(_ledPin, _red, _green, _blue);
+}
+
+void Room::_setLED() {
+  uint16_t colors[3];
+  
   _led->setLED(_ledPin, _red, _green, _blue);
 }
 

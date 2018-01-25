@@ -1,0 +1,9 @@
+{
+    "terminal.integrated.env.osx": {
+        "PATH": "/Users/prot02/.platformio/penv/bin:/Users/prot02/.platformio/penv:/Users/prot02/.goenv/shims:/Users/prot02/bin:/Users/prot02/.goenv/bin:/Users/prot02/.rbenv/shims:/usr/local/Cellar/pyenv-virtualenv/1.1.1/shims:/Users/prot02/.jenv/shims:/Users/prot02/.pyenv/shims:/Users/prot02/.zplug/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/VMware Fusion.app/Contents/Public:/usr/local/MacGPG2/bin:/opt/X11/bin:/Users/prot02/.rbenv/bin:/Users/prot02/.pyenv/bin:/usr/local/bin/:/usr/local/opt/fzf/bin"
+    },
+    "files.associations": {
+        "array": "cpp",
+        "initializer_list": "cpp"
+    }
+}

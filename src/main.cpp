@@ -85,7 +85,7 @@ void setup()
 
   Serial.println("Start led driver");
   ledExt.begin();
-  delay(500);
+  delay(5);
   Serial.println("Led driver start successful");
 
   Serial.println("Start io shield");
@@ -97,7 +97,7 @@ void setup()
     while (1)
       ;
   }
-  delay(500);
+  delay(10);
   ioExt.debounceTime(32); // Set debounce time to 32 ms.
   Serial.println("IO shield start successful");
 
@@ -113,7 +113,7 @@ void setup()
     while (1)
       ;
   }
-  delay(500);
+  delay(10);
 
   setup_networking();
 
@@ -184,7 +184,7 @@ void setup_networking()
 
 void setup_wifi()
 {
-  delay(500);
+  delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
@@ -195,7 +195,7 @@ void setup_wifi()
 
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(500);
+    delay(10);
     Serial.print(".");
   }
 
